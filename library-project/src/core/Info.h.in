@@ -1,0 +1,100 @@
+// SPDX-FileCopyrightText: Chris Rizzitello <sithlord48@gmail.com>
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include <@CMAKE_PROJECT_NAME@_export.h>
+#include <QDir>
+#include <QMap>
+#include <QTranslator>
+#include <QCoreApplication>
+#if QT_VERSION < QT_VERSION_CHECK(6, 5, 0)
+#include <QtQml/qqmlapplicationengine.h>
+#else
+#include <QtQmlIntegration/QtQmlIntegration>
+#endif
+/*! \class @CMAKE_PROJECT_NAME@
+ * \brief Core class @CMAKE_PROJECT_NAME@Info contains info about @CMAKE_PROJECT_NAME@
+ * If exposing to QML be sure to set the object to be owned by c++
+ * engine->setObjectOwnership(@CMAKE_PROJECT_NAME@Info::get(), QQmlEngine::CppOwnership);
+ */
+class @CMAKE_UC_PROJECT_NAME@_EXPORT @CMAKE_PROJECT_NAME@Info: public QObject
+{
+    QML_ELEMENT
+    QML_SINGLETON
+    Q_OBJECT
+    Q_PROPERTY(QString @CMAKE_PROJECT_NAME@Version READ version CONSTANT)
+public:
+
+    /**
+     * @brief Report version of @CMAKE_PROJECT_NAME@ in use
+     */
+    static QString version() { return m_version; }
+
+    /**
+     * @brief Return a QMap<QString, QTranslator*> of @CMAKE_PROJECT_NAME@ Translations
+     * key: A ISO-639-1 code for the language name.
+     * value: QTranslator* for the language.
+     */
+    static QMap<QString, QTranslator *> translations()
+    {
+        QMap<QString, QTranslator *> @CMAKE_PROJECT_NAME@_translations;
+        QDir dir;
+        static const QString appDir = QCoreApplication::applicationDirPath();
+        static const auto nameFilter = QStringList{QStringLiteral("@CMAKE_PROJECT_NAME@_*.qm")};
+        static const auto mainFolders = {
+            appDir
+            , QStringLiteral("%1/../..").arg(appDir)
+            , QStringLiteral("%1/..").arg(appDir)
+            , QStringLiteral("%1/../share/@CMAKE_PROJECT_NAME@").arg(appDir)
+#if defined (Q_OS_UNIX)
+            , QStringLiteral("%1/.local/share/@CMAKE_PROJECT_NAME@").arg(QDir::homePath())
+            , QStringLiteral("/opt/@CMAKE_PROJECT_NAME@-continious/share/@CMAKE_PROJECT_NAME@")
+            , QStringLiteral("/opt/@CMAKE_PROJECT_NAME@-%1/share/@CMAKE_PROJECT_NAME@").arg(m_version)
+            , QStringLiteral("/opt/@CMAKE_PROJECT_NAME@/share/@CMAKE_PROJECT_NAME@")
+            , QStringLiteral("/usr/share/@CMAKE_PROJECT_NAME@")
+            , QStringLiteral("/usr/local/share/@CMAKE_PROJECT_NAME@")
+# elif defined (Q_OS_WIN)
+            , QStringLiteral("%1Program Files/@CMAKE_PROJECT_NAME@-continious/share/@CMAKE_PROJECT_NAME@").arg(QDir::rootPath())
+            , QStringLiteral("%1Program Files/@CMAKE_PROJECT_NAME@-%2/share/@CMAKE_PROJECT_NAME@").arg(QDir::rootPath(), m_version)
+            , QStringLiteral("%1Program Files/@CMAKE_PROJECT_NAME@/share/@CMAKE_PROJECT_NAME@").arg(QDir::rootPath())
+#endif
+#if defined (Q_OS_DARWIN)
+            , QStringLiteral("%1/Applications/@CMAKE_PROJECT_NAME@-continious/share/@CMAKE_PROJECT_NAME@").arg(QDir::homePath())
+            , QStringLiteral("%1/Applications/@CMAKE_PROJECT_NAME@-%2/share/@CMAKE_PROJECT_NAME@").arg(QDir::homePath(), m_version)
+            , QStringLiteral("%1/Applications/@CMAKE_PROJECT_NAME@/share/@CMAKE_PROJECT_NAME@").arg(QDir::homePath())
+            , QStringLiteral("/Applications/@CMAKE_PROJECT_NAME@-continious/share/@CMAKE_PROJECT_NAME@")
+            , QStringLiteral("/Applications/@CMAKE_PROJECT_NAME@-%1/share/@CMAKE_PROJECT_NAME@").arg(m_version)
+            , QStringLiteral("/Applications/@CMAKE_PROJECT_NAME@/share/@CMAKE_PROJECT_NAME@")
+#endif
+        };
+        static const auto subFolders = {QStringLiteral("translations"), QStringLiteral("i18n"), QStringLiteral("lang")};
+        QStringList langList;
+        for(const auto &mainF : mainFolders) {
+            if(!langList.isEmpty())
+                break;
+            for(const auto &subF : subFolders) {
+                dir.setPath(QStringLiteral("%1/%2").arg(mainF, subF));
+                langList = dir.entryList(nameFilter, QDir::Files, QDir::Name);
+                if(!langList.isEmpty())
+                    break;
+            }
+        }
+
+        for (const QString &translation : std::as_const(langList)) {
+            QTranslator *translator = new QTranslator;
+            std::ignore = translator->load(translation, dir.absolutePath());
+            QString lang = translation.mid(6, 2);
+            @CMAKE_PROJECT_NAME@_translations.insert(lang, translator);
+        }
+        return @CMAKE_PROJECT_NAME@_translations;
+    }
+
+    static @CMAKE_PROJECT_NAME@Info *get()
+    {
+        static @CMAKE_PROJECT_NAME@Info m;
+        return &m;
+    }
+private:
+    inline static const auto m_version = QStringLiteral("@CMAKE_PROJECT_VERSION@");
+};
