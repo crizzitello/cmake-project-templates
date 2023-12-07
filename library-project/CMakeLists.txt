@@ -33,7 +33,7 @@ set(PROJECTS_LANGUAGES "CXX;C")
 
 # After Calling 'project' This becomes the CMAKE_PROJECT_HOMEPAGE_URL
 #The URL of the project
-set(PROJECTS_HOMEPAGE_URL "myHomePage")
+set(PROJECTS_HOMEPAGE_URL "")
 
 #Below is a macro from projectHelpers.cmake
 #It will read Version info from Git Tag vM.m.p
@@ -42,7 +42,7 @@ set(PROJECTS_HOMEPAGE_URL "myHomePage")
 git_version_from_tag(
     OUTPUT PROJECTS_VERSION
     MAJOR 0
-    MINOR 1
+    MINOR 0
     PATCH 0
     TWEAK 0
 )
@@ -55,7 +55,7 @@ set(PROJECTS_LICENSE "")
 
 #The Supplier of this packager A company or person
 
-set(PROJECTS_SUPPLIER "ICS")
+set(PROJECTS_SUPPLIER "")
 
 ###~~~~~~~~~~~~~~~~~~~~~~~~~PROJECT CALL~~~~~~~~~~~~~~~~~~~~~~~~~
 

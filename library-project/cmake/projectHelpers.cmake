@@ -106,10 +106,16 @@ macro(MAKE_LIBRARY LIB_TARGET HEADER_INSTALL_DIR)
         )
 
     generate_export_header(${LIB_TARGET})
+
+    if(${CMAKE_PROJECT_VERSION_MAJOR} GREATER_EQUAL 1)
+        set(LIB_COMPAT "SameMajorVersion")
+    else()
+        set(LIB_COMPAT "SameMinorVersion")
+    endif()
     write_basic_package_version_file(
         ${CMAKE_CURRENT_BINARY_DIR}/${LIB_TARGET}ConfigVersion.cmake
         VERSION ${PROJECT_VERSION}
-        COMPATIBILITY SameMinorVersion
+        COMPATIBILITY ${LIB_COMPAT}
     )
     configure_package_config_file(
         ${CMAKE_CURRENT_BINARY_DIR}/${LIB_TARGET}Config.cmake.in
@@ -311,7 +317,7 @@ function(git_version_from_tag)
     if("${m_OUTPUT}" STREQUAL "")
         message(FATAL_ERROR "No OUTPUT set")
     endif()
-    if(NOT m_MAJOR})
+    if(NOT m_MAJOR)
         set(m_MAJOR 0)
     endif()
 
