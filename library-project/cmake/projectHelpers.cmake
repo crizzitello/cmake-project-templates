@@ -117,8 +117,13 @@ macro(MAKE_LIBRARY LIB_TARGET HEADER_INSTALL_DIR)
         VERSION ${PROJECT_VERSION}
         COMPATIBILITY ${LIB_COMPAT}
     )
+    if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/${LIB_TARGET}Config.cmake.in)
+        set(CONFIG_IN ${CMAKE_CURRENT_BINARY_DIR}/${LIB_TARGET}Config.cmake.in)
+    else()
+        set(CONFIG_IN ${CMAKE_CURRENT_SOURCE_DIR}/${LIB_TARGET}Config.cmake.in)
+    endif()
     configure_package_config_file(
-        ${CMAKE_CURRENT_BINARY_DIR}/${LIB_TARGET}Config.cmake.in
+        ${CONFIG_IN}
         ${CMAKE_CURRENT_BINARY_DIR}/${LIB_TARGET}Config.cmake
         INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${CMAKE_PROJECT_NAME}
     )
