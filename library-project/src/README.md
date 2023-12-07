@@ -32,7 +32,7 @@ This is the `src` dir its contains
  Your library will be made with an alias of `myProject::foo` foo being the name you have picked
 
 #### Using the MAKE_LIBRARY Macro
-The CMakeLists.txt in this folder contains the MAKE_LIBRARY macro.
+To Create a library use the MAKE_LIBRARY macro
 
 usage: `MAKE_LIBRARY(LIB_TARGET HEADER_INSTALL_DIR)`
 Input
@@ -47,4 +47,34 @@ Must Set these variables in the CMakeLists.txt before Calling the macro Remember
   - `Foo_PublicLIBLINKS` Libraries that something linking to your library needs to also link.
   - `Foo_PrivateLIBLINKS` Libraries that only your library needs to link aginst.
 
+  For Qml Moduels you can also set, These items as
 
+  - `Foo_MAKEQMLMODULE` true/false - If True A QML Module will be made by calling qt_add_qml_module instead of add_library
+  - `FOO_TARGET_URI` - The URI of the new module
+  - `Foo_RESOURCE_PREFIX` - Set to /qt/qml unless otherwise specified
+  - `Foo_DEPENDS` - The list of Qml Modules this module will depend upon. Depends are added to LIB_TARGET_PublicLIBLINKS
+  - `Foo_QML_FILES` - QML Files that are part of the module
+
+#### What is created with the macro
+
+  1. A Libary
+     - Depending on the compiler the library may be prefixed with "lib"
+     - An Alias `${CMAKE_PROJECT_NAME}::${LIB_TARGET}` use this when linking to the library
+     - On Windows this libary will have info embedded using the `_templates/libTemplate.rc.in`
+     - The library will have it rpath modified based on the INSTALL_RPATH_STRING (set in the main cmakelist)
+     - The Library will be publicly linked to the libraries in `${Foo_PublicLIBLINKS}`
+     - The Library will be privately linked to the libraries in `${Foo_PrivateLIBLINKS}`
+     - The Library will have all the needed items for cmake to find it as a COMPONENT of the project
+     - The Library is added to the list of targets for the sbom.
+     - The Library will declare compatibiliy based upon its MAJOR version number
+         - If Major Version is >= 1, The compatibiliy will be set to `SameMajorVersion`
+         - If Major Version is < 1, The compatibiliy will be set to `SameMinorVersion`
+
+
+  2. Debug Info
+     - dbg files are created for the librares and are installed
+
+  3. Install Rules
+     - The library will be installed to ${CMAKE_INSTALL_LIBDIR}/${CMAKE_PROJECT_NAME}
+     - Library Headers will be installed to ${CMAKE_INSTALL_INCDIR}/${CMAKE_PROJECT_NAME}/${LIB_TARGET}
+     - Alias headers are generated so you can #include<foo> or #include<foo.h>
