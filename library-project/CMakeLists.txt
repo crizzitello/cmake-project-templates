@@ -23,6 +23,13 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/projectHelpers.cmake)
 # Used to name the Info class
 # Used to generate names the i18n files and more
 set(PROJECTS_NAME "")
+if("${PROJECTS_NAME}" STREQUAL "")
+    message(FATAL_ERROR "You must set a project name")
+endif()
+
+#Keep a copy of the project name in lower and upper for later use
+string(TOLOWER ${PROJECTS_NAME} PROJECT_LC_NAME)
+string(TOUPPER ${PROJECTS_NAME} PROJECT_UC_NAME)
 
 # After Calling 'project' This becomes the CMAKE_PROJECT_DESCRIPTION
 # The description should contain a single line of text with a simple description of the project
@@ -34,7 +41,9 @@ set(PROJECTS_LANGUAGES "CXX;C")
 # After Calling 'project' This becomes the CMAKE_PROJECT_HOMEPAGE_URL
 #The URL of the project
 set(PROJECTS_HOMEPAGE_URL "")
-
+if("${PROJECTS_HOMEPAGE_URL}" STREQUAL "")
+    message(FATAL_ERROR "You must set a project URL")
+endif()
 #Below is a macro from projectHelpers.cmake
 #It will read Version info from Git Tag vM.m.p
 #Should match the last semantic tag in git
@@ -51,17 +60,25 @@ git_version_from_tag(
 #Additional Data needed for sbom creataion
 
 #Set to a valid SPDX License from this list https://spdx.org/licenses/
+# Common Ones are MIT, LGPL-3.0-or-later
+# For other non spdx use License-Ref-LICENSE
+# Copy the main LICENSE into the COPYING.txt In the root of the source dir
+# Blank will be filled with "NOASSERTION" OR "NONE"
 set(PROJECTS_LICENSE "")
 
 #The Supplier of this packager A company or person
-
 set(PROJECTS_SUPPLIER "")
+if("${PROJECTS_SUPPLIER}" STREQUAL "")
+    message(FATAL_ERROR "You must set a project supplier")
+endif()
 
+# Projet Compatibility Default value to be used for compability of our versions
+# Can be AnyNewerVersion SameMajorVersion SameMinorVersion ExactVersion
+set(PROJECT_COMPATIBILITY "ExactVersion")
 ###~~~~~~~~~~~~~~~~~~~~~~~~~PROJECT CALL~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if("${PROJECTS_NAME}" STREQUAL "")
-    message(FATAL_ERROR "You must set a project name")
-endif()
+# Do We want to default to Shared LIBS ?
+option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
 project(${PROJECTS_NAME}
     VERSION ${PROJECTS_VERSION}
@@ -69,9 +86,6 @@ project(${PROJECTS_NAME}
     LANGUAGES ${PROJECTS_LANGUAGES}
     HOMEPAGE_URL ${PROJECTS_HOMEPAGE_URL}
 )
-
-#We need a UpperCase Project Name for A few things
-string(TOUPPER ${CMAKE_PROJECT_NAME} CMAKE_UC_PROJECT_NAME)
 
 #Used Modules that must be included after a project call has been made
 include(GNUInstallDirs)

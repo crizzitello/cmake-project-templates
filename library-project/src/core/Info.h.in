@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <@CMAKE_PROJECT_NAME@_export.h>
+#include <@PROJECT_LC_NAME@_export.h>
 #include <QDir>
 #include <QMap>
 #include <QTranslator>
@@ -18,7 +18,7 @@
  * If exposing to QML be sure to set the object to be owned by c++
  * engine->setObjectOwnership(@CMAKE_PROJECT_NAME@Info::get(), QQmlEngine::CppOwnership);
  */
-class @CMAKE_UC_PROJECT_NAME@_EXPORT @CMAKE_PROJECT_NAME@Info: public QObject
+class @PROJECT_UC_NAME@_EXPORT @CMAKE_PROJECT_NAME@Info: public QObject
 {
     QML_ELEMENT
     QML_SINGLETON

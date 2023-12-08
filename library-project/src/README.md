@@ -19,57 +19,58 @@ This is the `src` dir its contains
   3. Make a new subdirectory
   4. In the new directory create a `CMakeLists.txt`
      1. Use the core folder for an example
-     2. Always Include in var Foo_HEADERS `${CMAKE_CURRENT_BINARY_DIR}/Foo_export.h`. This file will be generated at build time
   5. In the new directory create a `FooConfig.cmake.in` Use your library name in place of `Foo`. This file will be used when an applicton or lib looks for your library.
      1. Use The PROJECT_NAMEConfig.cmake.in as a starting point
      2. Add any other find dependency calls needed to link with this application
      3. Always include the line `include("${CMAKE_CURRENT_LIST_DIR}/${CMAKE_PROJECT_NAME}Targets.cmake")` last
   6. In your class be sure to
-     1. Include the export header `#include <foo_export.h>
+     1. Include the export header `#include <foo_export.h>` This file is generated at build time and will be lowercase the targetname
      2. Use the FOO_EXPORT macro to expose your class ex. `class FOO_EXPORT className ...`
 
 #### Linking your New library
  Your library will be made with an alias of `myProject::foo` foo being the name you have picked
 
-#### Using the MAKE_LIBRARY Macro
-To Create a library use the MAKE_LIBRARY macro
+#### Using the create_library Macro
+To Create a library use the create_library macro
 
-usage: `MAKE_LIBRARY(LIB_TARGET HEADER_INSTALL_DIR)`
-Input
-  - `LIB_TARGET` - Name of Library to Make
-  - `HEADER_INSTALL_DIR` sub path of include directory to install the headers into ex:`myProject/foo`
-
-Must Set these variables in the CMakeLists.txt before Calling the macro Remember to replace 'Foo' With your library name
-
-  - `Foo_SRC` List of the libraries source files
-  - `Foo_HEADERS` List of libraries headers Must include at least `${CMAKE_CURRENT_BINARY_DIR}/Foo_export.h`
-  - `Foo_RESOURCES` List of Resource(s) your library has
-  - `Foo_PublicLIBLINKS` Libraries that something linking to your library needs to also link.
-  - `Foo_PrivateLIBLINKS` Libraries that only your library needs to link aginst.
-
-  For Qml Moduels you can also set, These items as
-
-  - `Foo_MAKEQMLMODULE` true/false - If True A QML Module will be made by calling qt_add_qml_module instead of add_library
-  - `FOO_TARGET_URI` - The URI of the new module
-  - `Foo_RESOURCE_PREFIX` - Set to /qt/qml unless otherwise specified
-  - `Foo_DEPENDS` - The list of Qml Modules this module will depend upon. Depends are added to LIB_TARGET_PublicLIBLINKS
-  - `Foo_QML_FILES` - QML Files that are part of the module
-
-#### What is created with the macro
+usage: `create_library(TARGET <name> ...)
+Inputs:
+   - Options
+      - EXCLUDE_FROM_ALL #If TRUE, Target is excluded from the all target
+      - FRAMEWORK # If TRUE, Makes a FRAMEWORK on MacOS
+      - SKIP_ALIAS # If TRUE, Does not Create Alias library with the library
+      - SKIP_ALIAS_HEADERS # if TRUE, Alias headers will not be created
+      - SKIP_SBOM # if TRUE, The target will not be added to the generated sbom
+      - QML_MODULE # If TRUE, Makes a Qml Module
+   - Single Value Arguments
+      -  TARGET Required, Name of the new Target
+      -  TYPE   Library Type [SHARED, STATIC] When not set uses the Value of ${BUILD_SHARED_LIBS}
+      -  RESOURCE_PREFIX  Qml Import Prefix if undefined will use "/qt/qml"
+      -  URI URI To be used for module import
+      -  ALIAS Alias Override, If not set ${CMAKE_PROJECT_NAME}::TARGET will be used
+      -  RC_TEMPLATE Override the rc template that will be embedded on win32 [_template/libTemplate.rc.in] used as -default
+      -  RPATH Override Install Rpath on linux/mac, if not set will use ${INSTALL_RPATH_STRING} if set otherwise rpath -will untouched
+      -  INSTALL_INCLUDEDIR #Path to install the headers into under the ${CMAKE_INSTALL_INCLUDEDIR} default[$-{CMAKE_PROJECT_NAME}/TARGET]
+      -  COMPATIBILITY  Should be [AnyNewerVersion|SameMajorVersion|SameMinorVersion|ExactVersion] ${CMAKE_PROJECT_COMPATIBILITY} if that is not set will fallback to ExactVersion
+   - List Value Arguments
+      -  SOURCES  # SOURCE FILES FOR THE NEW LIBRARY May Include UI / QRC files
+      -  HEADERS  # HEADERS FOR THE NEW LIBRARY
+      -  QMLFILES # Qml Files used for qml plugins only
+      -  QMLDEPENDS # Qml Modules the new Qml Module will Depend on
+      -  PUBLIC_LINKS # Libraries to link publicly
+      -  PRIVATE_LINKS # Libraries to link privately
+#### What is created with the function
 
   1. A Libary
      - Depending on the compiler the library may be prefixed with "lib"
      - An Alias `${CMAKE_PROJECT_NAME}::${LIB_TARGET}` use this when linking to the library
      - On Windows this libary will have info embedded using the `_templates/libTemplate.rc.in`
      - The library will have it rpath modified based on the INSTALL_RPATH_STRING (set in the main cmakelist)
-     - The Library will be publicly linked to the libraries in `${Foo_PublicLIBLINKS}`
-     - The Library will be privately linked to the libraries in `${Foo_PrivateLIBLINKS}`
+     - The Library will be publicly linked to the libraries in `PUBLIC_LINKS`
+     - The Library will be privately linked to the libraries in `PRIVATE_LINKS`
      - The Library will have all the needed items for cmake to find it as a COMPONENT of the project
      - The Library is added to the list of targets for the sbom.
-     - The Library will declare compatibiliy based upon its MAJOR version number
-         - If Major Version is >= 1, The compatibiliy will be set to `SameMajorVersion`
-         - If Major Version is < 1, The compatibiliy will be set to `SameMinorVersion`
-
+     - The Library will declare compatibiliy based upon its `COMPATIBILITY`
 
   2. Debug Info
      - dbg files are created for the librares and are installed

@@ -4,130 +4,174 @@
 # Modified to more fit a project template.
 
 #Contains Various Macros to be included
-#####~~~~~~~~~~~~~~~~~~~~~MAKE_LIBRARY~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#This makes a Library and sets up all the install rules
-# CMAKE_PROJECT_NAME will be used for the project name where needed
-# Calls add_library or qt_add_qml_module based on the provided options
-# LIB_TARGET NAME of Library to Make
-# HEADER_INSTALL_DIR: Path to install headers
-## The Follow should be by defined the caller before calling the macro
-# LIB_TARGET_SRC
-# LIB_TARGET_HEADERS
-# LIB_TARGET_RESOURCES
-# LIB_TARGET_PublicLIBLINKS
-# LIB_TARGET_PrivateLIBLINKS
-## QML PLUGINS##
-# By Default a libary will be made if you would instead like a QML MODULE
-# LIB_TARGET_MAKEQMLMODULE - If True A QML Module will be made by calling qt_add_qml_module instead of add_library
-# LIB_TARGET_URI - The URI of the new module
-# LIB_TARGET_RESOURCE_PREFIX - Set to /qt/qml unless otherwise specified
-# LIB_TARGET_DEPENDS - The list of Qml Modules this module will depend upon. Depends are added to LIB_TARGET_PublicLIBLINKS
-# LIB_TARGET_QML_FILES - QML Files that are part of the module
+#####~~~~~~~~~~~~~~~~~~~~~CREATE_LIBRARY~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Creates and install's components
+function(create_library)
+    set(options
+        EXCLUDE_FROM_ALL #If TRUE, Target is excluded from the all target
+        FRAMEWORK # If TRUE, Makes a FRAMEWORK on MacOS
+        SKIP_ALIAS # If TRUE, Does not Create Alias library with the library
+        SKIP_ALIAS_HEADERS # if TRUE, Alias headers will not be created
+        SKIP_SBOM # if TRUE, The target will not be added to the generated sbom
+        QML_MODULE # If TRUE, Makes a Qml Module
+    )
+    set(oneValueArgs
+        TARGET # Name of the new Target
+        TYPE # Library Type [SHARED, STATIC] When not set uses the Value of ${BUILD_SHARED_LIBS}
+        RESOURCE_PREFIX # Qml Import Prefix if undefined will use "/qt/qml"
+        URI #URI To be used for module import
+        ALIAS # Alias Override, If not set ${CMAKE_PROJECT_NAME}::TARGET will be used
+        RC_TEMPLATE # Override the rc template that will be embedded on win32 [_template/libTemplate.rc.in] used as default
+        RPATH #Override Install Rpath on linux/mac, if not set will use ${INSTALL_RPATH_STRING} if set otherwise rpath will untouched
+        INSTALL_INCLUDEDIR #Path to install the headers into under the ${CMAKE_INSTALL_INCLUDEDIR} default[${CMAKE_PROJECT_NAME}/TARGET]
+        COMPATIBILITY # Should be [AnyNewerVersion|SameMajorVersion|SameMinorVersion|ExactVersion] ${CMAKE_PROJECT_COMPATIBILITY} if that is not set will fallback to ExactVersion
+    )
 
-macro(MAKE_LIBRARY LIB_TARGET HEADER_INSTALL_DIR)
-    if(DEFINED ${LIB_TARGET}_MAKEQMLMODULE)
-        if(NOT DEFINED ${LIB_TARGET}_RESOURCE_PREFIX)
-            set(RESOURCE_PREFIX "/qt/qml")
+    set(multiValueArgs
+        SOURCES  # SOURCE FILES FOR THE NEW LIBRARY May Include UI / QRC files
+        HEADERS  # HEADERS FOR THE NEW LIBRARY
+        QMLFILES # Qml Files used for qml plugins only
+        QMLDEPENDS # Qml Modules the new Qml Module will Depend on
+        PUBLIC_LINKS # Libraries to link publicly
+        PRIVATE_LINKS # Libraries to link privately
+    )
+    cmake_parse_arguments(m "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    ## Sanity Checks
+    if(m_UNPARSED_ARGUMENTS)
+        message(FATAL_ERROR "create_library, Unknown arguments: ${m_UNPARSED_ARGUMENTS}")
+    endif()
+
+    if("${m_TARGET}" STREQUAL "")
+        message(FATAL_ERROR "create_library, No Target Defined")
+    endif()
+
+    if("${m_INSTALL_INCLUDEDIR}" STREQUAL "")
+        set(m_INSTALL_INCLUDEDIR "${CMAKE_PROJECT_NAME}/${m_TARGET}")
+    endif()
+
+    if("${m_COMPATIBILITY}" STREQUAL "")
+        if(NOT "${PROJECT_COMPATIBILITY}" STREQUAL "")
+            set(m_COMPATIBILITY ${PROJECT_COMPATIBILITY})
+        else()
+            set(m_COMPATIBILITY "ExactVersion")
+        endif()
+    endif()
+
+    if(${m_EXCLUDE_FROM_ALL})
+        set(EXCLUDE_FROM_ALL EXCLUDE_FROM_ALL)
+    endif()
+
+    if (m_QML_MODULE)
+        if("${m_URI}" STREQUAL "")
+            message(FATAL_ERROR "create_library, NO URI Defined for Qml Module ${m_TARGET}")
         endif()
 
-        qt_add_qml_module(${LIB_TARGET}
-            VERSION 1.0
-            URI ${${LIB_TARGET}_URI}
-            RESOURCE_PREFIX ${RESOURCE_PREFIX}
-            DEPENDENCIES ${${LIB_TARGET}_DEPENDS}
-            QML_FILES ${${LIB_TARGET}_QMLFILES}
-            SOURCES ${${LIB_TARGET}_SRC} ${${LIB_TARGET}_HEADERS}
+        if("${m_RESOURCE_PREFIX}" STREQUAL "")
+            set(m_RESOURCE_PREFIX "/qt/qml")
+        endif()
+
+        qt_add_qml_module(${m_TARGET}
             NO_PLUGIN
+            VERSION 1.0
+            URI ${m_URI}
+            RESOURCE_PREFIX ${m_RESOURCE_PREFIX}
+            DEPENDENCIES ${m_QMLDEPENDS}
+            QML_FILES ${m_QMLFILES}
+            SOURCES ${m_SOURCES} ${m_HEADERS}
         )
     else()
-        add_library (${LIB_TARGET} SHARED
-                ${${LIB_TARGET}_SRC}
-                ${${LIB_TARGET}_HEADERS}
-                ${${LIB_TARGET}_RESOURCES}
-    )
+        add_library(${m_TARGET} ${m_TYPE} ${EXCLUDE_FROM_ALL} ${m_SOURCES} ${m_HEADERS})
     endif()
-    add_library (${CMAKE_PROJECT_NAME}::${LIB_TARGET} ALIAS ${LIB_TARGET})
+
+    if(NOT m_SKIP_ALIAS)
+        if ("${m_ALIAS}" STREQUAL "")
+            set(m_ALIAS "${CMAKE_PROJECT_NAME}::${m_TARGET}")
+        endif()
+        add_library(${m_ALIAS} ALIAS ${m_TARGET})
+    endif()
+
+    if(NOT m_SKIP_SBOM)
+        sbom_add(TARGET ${m_TARGET})
+    endif()
+
+    #Generate Export Header
+    generate_export_header(${m_TARGET})
+    string(TOLOWER ${m_TARGET} m_exportTarget)
+    string(APPEND m_exportTarget "_export.h")
+    list(FIND "${m_HEADERS}" "${CMAKE_CURRENT_BINARY_DIR}/${m_exportTarget}" _export_included)
+    if(${_export_included} LESS 0)
+        list(APPEND ${m_HEADERS} ${CMAKE_CURRENT_BINARY_DIR}/${m_exportTarget})
+    endif()
+    target_sources(${m_TARGET} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/${m_exportTarget}")
 
     #Embed rc file with Version info
     if(WIN32)
-        set(LIB_NAME ${LIB_TARGET})
-        configure_file(${CMAKE_SOURCE_DIR}/cmake/_template/libTemplate.rc.in ${CMAKE_CURRENT_BINARY_DIR}/${LIB_TARGET}.rc @ONLY)
-        target_sources(${LIB_TARGET} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/${LIB_TARGET}.rc)
+        if ("${m_RC_TEMPLATE}" STREQUAL "")
+            set(m_RC_TEMPLATE "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/_template/libTemplate.rc.in")
+        endif()
+        configure_file(${m_RC_TEMPLATE} ${CMAKE_CURRENT_BINARY_DIR}/${m_TARGET}.rc @ONLY)
+        target_sources(${m_TARGET} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/${m_TARGET}.rc)
     endif()
 
-    #Generate the non .h ending header let the user include "HEADER" or "HEADER.h"
-    foreach ( HEADER ${${LIB_TARGET}_HEADERS})
-        if(${HEADER} MATCHES "^/" OR ${HEADER} MATCHES "^[A-Za-z]:")
-            string(FIND ${HEADER} "/" lastSlash REVERSE)
-            string(SUBSTRING ${HEADER} 0 ${lastSlash} RMSTRING)
-            string(REPLACE "${RMSTRING}/" "" HEADER ${HEADER})
-        endif()
-        set(fileContent "#pragma once\n#include<${HEADER}>\n")
-        string(REPLACE ".h" "" HEADER ${HEADER})
-        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${HEADER} ${fileContent})
-        list(APPEND ALIASHEADERS ${CMAKE_CURRENT_BINARY_DIR}/${HEADER})
-    endforeach()
+    #Alias Headers
+    if(NOT m_SKIP_ALIAS_HEADERS)
+        foreach ( HEADER ${m_HEADERS})
+            if(${HEADER} MATCHES "^/" OR ${HEADER} MATCHES "^[A-Za-z]:")
+                string(FIND ${HEADER} "/" lastSlash REVERSE)
+                string(SUBSTRING ${HEADER} 0 ${lastSlash} RMSTRING)
+                string(REPLACE "${RMSTRING}/" "" HEADER ${HEADER})
+            endif()
+            set(fileContent "#pragma once\n#include<${HEADER}>\n")
+            string(REPLACE ".h" "" HEADER ${HEADER})
+            file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${HEADER} ${fileContent})
+            list(APPEND ALIASHEADERS ${CMAKE_CURRENT_BINARY_DIR}/${HEADER})
+        endforeach()
+    endif()
 
+    #Rpath
+    if("${m_RPATH}" STREQUAL "")
+        set(m_RPATH "${INSTALL_RPATH_STRING}")
+    endif()
     if(APPLE)
-        set_target_properties(${LIB_TARGET} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
-        if(${BUILD_FRAMEWORKS})
-            target_include_directories(${LIB_TARGET} PUBLIC  $<BUILD_INTERFACE:$<TARGET_BUNDLE_CONTENT_DIR:${LIB_TARGET}>/Headers>)
+        if(NOT "${m_RPATH}" STREQUAL "")
+            set_target_properties(${m_TARGET} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
+        endif()
+        if(${m_FRAMEWORK})
+            target_include_directories(${m_TARGET} PUBLIC  $<BUILD_INTERFACE:$<TARGET_BUNDLE_CONTENT_DIR:${m_TARGET}>/Headers>)
         endif()
     endif()
 
-    if(UNIX)
-        set_target_properties(${LIB_TARGET} PROPERTIES INSTALL_RPATH ${INSTALL_RPATH_STRING})
+    if(UNIX AND NOT "${m_RPATH}" STREQUAL "")
+        set_target_properties(${m_TARGET} PROPERTIES INSTALL_RPATH ${INSTALL_RPATH_STRING})
     endif()
 
-    set_target_properties(${LIB_TARGET} PROPERTIES
-        FRAMEWORK ${BUILD_FRAMEWORKS}
+    # Properties
+    set_target_properties(${m_TARGET} PROPERTIES
+        FRAMEWORK ${m_FRAMEWORK}
         FRAMEWORK_VERSION ${PROJECT_VERSION_MAJOR}
-        MACOSX_FRAMEWORK_IDENTIFIER com.${PROJECTS_SUPPLIER}.${LIB_TARGET}
+        MACOSX_FRAMEWORK_IDENTIFIER com.${PROJECTS_SUPPLIER}.${m_TARGET}
         VERSION "${PROJECT_VERSION}"
         SOVERSION "${PROJECT_VERSION_MAJOR}"
-        PUBLIC_HEADER "${${LIB_TARGET}_HEADERS}"
+        PUBLIC_HEADER "${m_HEADERS}"
         MAP_IMPORTED_CONFIG_DEBUG RELWITHDEBINFO
         MAP_IMPORTED_CONFIG_RELEASE RELWITHDEBINFO
         MAP_IMPORTED_CONFIG_RELWITHDEBINFO RELWITHDEBINFO
         MAP_IMPORTED_CONFIG_MINSIZEREL RELWITHDEBINFO
     )
 
-    target_include_directories(${LIB_TARGET} PUBLIC
+    target_include_directories(${m_TARGET} PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-        $<INSTALL_INTERFACE:include/${HEADER_INSTALL_DIR}>
+        $<INSTALL_INTERFACE:include/${m_INSTALL_INCLUDEDIR}>
     )
 
-    target_link_libraries (${LIB_TARGET}
-        PUBLIC
-          ${${LIB_TARGET}_PublicLIBLINKS}
-        PRIVATE
-          ${${LIB_TARGET}_PrivateLIBLINKS}
-        )
-
-    generate_export_header(${LIB_TARGET})
-
-    if(${CMAKE_PROJECT_VERSION_MAJOR} GREATER_EQUAL 1)
-        set(LIB_COMPAT "SameMajorVersion")
-    else()
-        set(LIB_COMPAT "SameMinorVersion")
-    endif()
-    write_basic_package_version_file(
-        ${CMAKE_CURRENT_BINARY_DIR}/${LIB_TARGET}ConfigVersion.cmake
-        VERSION ${PROJECT_VERSION}
-        COMPATIBILITY ${LIB_COMPAT}
+    target_link_libraries (${m_TARGET}
+        PUBLIC ${m_PUBLIC_LINKS}
+        PRIVATE ${m_PRIVATE_LINKS}
     )
-    if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/${LIB_TARGET}Config.cmake.in)
-        set(CONFIG_IN ${CMAKE_CURRENT_BINARY_DIR}/${LIB_TARGET}Config.cmake.in)
-    else()
-        set(CONFIG_IN ${CMAKE_CURRENT_SOURCE_DIR}/${LIB_TARGET}Config.cmake.in)
-    endif()
-    configure_package_config_file(
-        ${CONFIG_IN}
-        ${CMAKE_CURRENT_BINARY_DIR}/${LIB_TARGET}Config.cmake
-        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${CMAKE_PROJECT_NAME}
-    )
-    install(TARGETS ${LIB_TARGET}
+
+    install(TARGETS ${m_TARGET}
         EXPORT ${CMAKE_PROJECT_NAME}Targets
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
             COMPONENT ${CMAKE_PROJECT_NAME}_libraries
@@ -138,36 +182,62 @@ macro(MAKE_LIBRARY LIB_TARGET HEADER_INSTALL_DIR)
             COMPONENT ${CMAKE_PROJECT_NAME}_libraries
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
             COMPONENT ${CMAKE_PROJECT_NAME}_headers
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${HEADER_INSTALL_DIR}
+        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${m_INSTALL_INCLUDEDIR}
             COMPONENT ${CMAKE_PROJECT_NAME}_headers
     )
-    install (FILES ${ALIASHEADERS}
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${HEADER_INSTALL_DIR}
+    install (
+        FILES ${ALIASHEADERS}
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${m_INSTALL_INCLUDEDIR}
         COMPONENT ${CMAKE_PROJECT_NAME}_headers
     )
+    #Generate Cmake Files and install
+    write_basic_package_version_file(
+        ${CMAKE_CURRENT_BINARY_DIR}/${m_TARGET}ConfigVersion.cmake
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY ${m_COMPATIBILITY}
+    )
+    if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/${m_TARGET}Config.cmake.in)
+        set(CONFIG_IN ${CMAKE_CURRENT_BINARY_DIR}/${m_TARGET}Config.cmake.in)
+    else()
+        set(CONFIG_IN ${CMAKE_CURRENT_SOURCE_DIR}/${m_TARGET}Config.cmake.in)
+    endif()
+    configure_package_config_file(
+        ${CONFIG_IN}
+        ${CMAKE_CURRENT_BINARY_DIR}/${m_TARGET}Config.cmake
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${CMAKE_PROJECT_NAME}
+    )
 
+    #setup the debug files and deployment
     if(UNIX)
         if(NOT APPLE)
-            add_custom_command(TARGET ${LIB_TARGET} POST_BUILD
-                COMMAND ${CMAKE_OBJCOPY} --only-keep-debug $<TARGET_FILE:${LIB_TARGET}> $<TARGET_FILE:${LIB_TARGET}>.dbg
-                COMMAND ${CMAKE_STRIP} --strip-debug $<TARGET_FILE:${LIB_TARGET}>
-                COMMAND ${CMAKE_OBJCOPY} --add-gnu-debuglink=$<TARGET_FILE:${LIB_TARGET}>.dbg $<TARGET_FILE:${LIB_TARGET}>
+            add_custom_command(TARGET ${m_TARGET} POST_BUILD
+                COMMAND ${CMAKE_OBJCOPY} --only-keep-debug $<TARGET_FILE:${m_TARGET}> $<TARGET_FILE:${m_TARGET}>.dbg
+                COMMAND ${CMAKE_STRIP} --strip-debug $<TARGET_FILE:${m_TARGET}>
+                COMMAND ${CMAKE_OBJCOPY} --add-gnu-debuglink=$<TARGET_FILE:${m_TARGET}>.dbg $<TARGET_FILE:${m_TARGET}>
             )
         else()
-            add_custom_command(TARGET ${LIB_TARGET} POST_BUILD
-                COMMAND dsymutil -f $<TARGET_FILE:${LIB_TARGET}> -o $<TARGET_FILE:${LIB_TARGET}>.dbg
+            add_custom_command(TARGET ${m_TARGET} POST_BUILD
+                COMMAND dsymutil -f $<TARGET_FILE:${m_TARGET}> -o $<TARGET_FILE:${m_TARGET}>.dbg
             )
         endif()
-        install(FILES $<TARGET_FILE:${LIB_TARGET}>.dbg
+        install(FILES $<TARGET_FILE:${m_TARGET}>.dbg
             DESTINATION ${CMAKE_INSTALL_LIBDIR}/debug
             COMPONENT ${CMAKE_PROJECT_NAME}_debug
         )
     elseif(WIN32)
-        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/$<TARGET_FILE_BASE_NAME:${LIB_TARGET}>.pdb
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/$<TARGET_FILE_BASE_NAME:${m_TARGET}>.pdb
             DESTINATION ${CMAKE_INSTALL_BINDIR}
             COMPONENT ${CMAKE_PROJECT_NAME}_debug
         )
     endif()
+
+    install(
+    FILES
+           ${CMAKE_CURRENT_BINARY_DIR}/${m_TARGET}Config.cmake
+          ${CMAKE_CURRENT_BINARY_DIR}/${m_TARGET}ConfigVersion.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${CMAKE_PROJECT_NAME}
+        COMPONENT ${CMAKE_PROJECT_NAME}_headers
+    )
 
     install(
         EXPORT ${CMAKE_PROJECT_NAME}Targets
@@ -176,21 +246,9 @@ macro(MAKE_LIBRARY LIB_TARGET HEADER_INSTALL_DIR)
         COMPONENT ${CMAKE_PROJECT_NAME}_headers
     )
 
-    install(
-        FILES
-          ${CMAKE_CURRENT_BINARY_DIR}/${LIB_TARGET}Config.cmake
-          ${CMAKE_CURRENT_BINARY_DIR}/${LIB_TARGET}ConfigVersion.cmake
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${CMAKE_PROJECT_NAME}
-        COMPONENT ${CMAKE_PROJECT_NAME}_headers
-    )
-
-    export(EXPORT ${CMAKE_PROJECT_NAME}Targets FILE ${CMAKE_CURRENT_BINARY_DIR}/${LIB_TARGET}Targets.cmake)
-    set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_targets ${LIB_TARGET})
-
-    sbom_add(TARGET ${LIB_TARGET})
-
-endmacro()
-
+    export(EXPORT ${CMAKE_PROJECT_NAME}Targets FILE ${CMAKE_CURRENT_BINARY_DIR}/${m_TARGET}Targets.cmake)
+    set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_targets ${m_TARGET})
+endfunction()
 #####~~~~~~~~~~~~~~~~~~~~~MAKE_DEMO~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #This Macro Creates a ${CMAKE_PROJECT_NAME} demo from a project
 #Then Sets all install and pacakge info
@@ -375,7 +433,6 @@ endfunction()
 
 
 # Common Platform Enumeration: https://nvd.nist.gov/products/cpe
-#
 # TODO: This detection can be improved.
 # Detect CPE String Called by sbom_generate
 function (detectCPE)

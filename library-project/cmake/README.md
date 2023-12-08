@@ -14,7 +14,7 @@ This is the `cmake` dir its contains
 
 ## Functions and Macros in projectHelpers.cmake
 
- - `MAKE_LIBRARY` - Used to create library Targets
+ - `create_library` - Used to create library Targets
  - `MAKE_DEMO` - Used to create Demo applications
  - `MAKE_TEST` - Used to crate Unit tests.
  - `git_version_from_tag` - Used to make generate project version information from semantic versioned git tag
