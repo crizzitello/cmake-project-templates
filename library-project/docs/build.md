@@ -19,6 +19,7 @@ Build Options:
          Option          |            Description                  |   Default Value    | Addtional Requirments |
 :-----------------------:|:---------------------------------------:|:------------------:|:---------------------:|
 CMAKE_BUILD_TYPE         | Type of Build that is produced          | ReleaseWithDebInfo | |
+BUILD_SHARED_LIBS        | Sets if libs default to shared          | ON                 | |
 DOCS                     | Build Documentation                     | ON                 | [doxygen] |
 DEMOS                    | Build The Demo Applications             | OFF                | |
 PACKAGE                  | Enable Package target                   | ON                 | |

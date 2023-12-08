@@ -19,10 +19,14 @@ This is the `src` dir its contains
   3. Make a new subdirectory
   4. In the new directory create a `CMakeLists.txt`
      1. Use the core folder for an example
-  5. In the new directory create a `FooConfig.cmake.in` Use your library name in place of `Foo`. This file will be used when an applicton or lib looks for your library.
-     1. Use The PROJECT_NAMEConfig.cmake.in as a starting point
-     2. Add any other find dependency calls needed to link with this application
-     3. Always include the line `include("${CMAKE_CURRENT_LIST_DIR}/${CMAKE_PROJECT_NAME}Targets.cmake")` last
+  5. In the new directory create a `FooConfig.cmake.in` Use your library name in place of `Foo`. This file will be used when an applicton or lib looks for your library. Below can be used as a starting point for this file
+  ```
+    @PACKAGE_INIT@
+    include(CMakeFindDependencyMacro)
+    #Do this for all other depends / components
+    find_dependency(Qt6 ${REQUIRED_QT_VERSION} COMPONENTS Core)
+    include("${CMAKE_CURRENT_LIST_DIR}/${CMAKE_PROJECT_NAME}Targets.cmake")
+  ```
   6. In your class be sure to
      1. Include the export header `#include <foo_export.h>` This file is generated at build time and will be lowercase the targetname
      2. Use the FOO_EXPORT macro to expose your class ex. `class FOO_EXPORT className ...`
@@ -78,4 +82,4 @@ Inputs:
   3. Install Rules
      - The library will be installed to ${CMAKE_INSTALL_LIBDIR}/${CMAKE_PROJECT_NAME}
      - Library Headers will be installed to ${CMAKE_INSTALL_INCDIR}/${CMAKE_PROJECT_NAME}/${LIB_TARGET}
-     - Alias headers are generated so you can #include<foo> or #include<foo.h>
+     - Alias headers are generated so you can #include with if without the .h
