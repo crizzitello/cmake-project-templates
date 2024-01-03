@@ -22,7 +22,7 @@ You can use the `PROJECTS_NAME <version>-installer` to install PROJECTS_NAME, wh
    - `~/.local/opt/PROJECTS_NAME`
    - `~/.local/opt/PROJECTS_NAME-<VERSION#>`
 
-### Adding ff7tk to the path
+### Adding PROJECTS_NAME to the path
   Depending on your os and how you install you may want to also add the install path explicitly to your "PATH"
 
   - Windows
