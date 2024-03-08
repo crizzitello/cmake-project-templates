@@ -52,8 +52,8 @@ Inputs:
       -  RESOURCE_PREFIX  Qml Import Prefix if undefined will use "/qt/qml"
       -  URI URI To be used for module import
       -  ALIAS Alias Override, If not set ${CMAKE_PROJECT_NAME}::TARGET will be used
-      -  RC_TEMPLATE Override the rc template that will be embedded on win32 [_template/libTemplate.rc.in] used as -default
-      -  RPATH Override Install Rpath on linux/mac, if not set will use ${INSTALL_RPATH_STRING} if set otherwise rpath -will untouched
+      -  RC_TEMPLATE Override the rc template that will be embedded on win32 [_template/libTemplate.rc.in] used as default
+      -  RPATH Override Install Rpath on linux/mac, if not set will use ${INSTALL_RPATH_STRING} if set otherwise rpath will not be changed
       -  INSTALL_INCLUDEDIR #Path to install the headers into under the ${CMAKE_INSTALL_INCLUDEDIR} default[$-{CMAKE_PROJECT_NAME}/TARGET]
       -  COMPATIBILITY  Should be [AnyNewerVersion|SameMajorVersion|SameMinorVersion|ExactVersion] ${CMAKE_PROJECT_COMPATIBILITY} if that is not set will fallback to ExactVersion
    - List Value Arguments
@@ -80,6 +80,6 @@ Inputs:
      - dbg files are created for the librares and are installed
 
   3. Install Rules
-     - The library will be installed to ${CMAKE_INSTALL_LIBDIR}/${CMAKE_PROJECT_NAME}
-     - Library Headers will be installed to ${CMAKE_INSTALL_INCDIR}/${CMAKE_PROJECT_NAME}/${LIB_TARGET}
-     - Alias headers are generated so you can #include with if without the .h
+     - The library will be installed to `${CMAKE_INSTALL_LIBDIR}/${CMAKE_PROJECT_NAME}`
+     - Library Headers will be installed to `${CMAKE_INSTALL_INCDIR}/${CMAKE_PROJECT_NAME}/${LIB_TARGET}`
+     - Alias headers are generated so you can #include with or without the .h

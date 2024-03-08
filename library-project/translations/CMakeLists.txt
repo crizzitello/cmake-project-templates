@@ -5,7 +5,7 @@ option(CLEAN_TRS "Clean Obsolete translations from tr files" FALSE)
 find_package(Qt6LinguistTools)
 
 set(PACKAGE_TRS
-    #THE TS FIELS IN THIS DIRECTORY TO INCLUDE
+    #THE TS FILES IN THIS DIRECTORY TO INCLUDE
 )
 
 if(CLEAN_TRS)
