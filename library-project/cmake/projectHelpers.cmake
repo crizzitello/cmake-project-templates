@@ -34,6 +34,7 @@ function(create_library)
         QMLDEPENDS # Qml Modules the new Qml Module will Depend on
         PUBLIC_LINKS # Libraries to link publicly
         PRIVATE_LINKS # Libraries to link privately
+        INTERFACE_LINKS #Libraries to link as interface
     )
     cmake_parse_arguments(m "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -169,6 +170,7 @@ function(create_library)
     target_link_libraries (${m_TARGET}
         PUBLIC ${m_PUBLIC_LINKS}
         PRIVATE ${m_PRIVATE_LINKS}
+        INTERFACE ${m_INTERFACE_LINKS}
     )
 
     install(TARGETS ${m_TARGET}
