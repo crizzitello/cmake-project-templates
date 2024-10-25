@@ -24,7 +24,7 @@ if(DOCS)
         mainpage.md
     )
 
-    install (DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/html" DESTINATION ${CMAKE_INSTALL_DOCDIR} COMPONENT ${CMAKE_PROJECT_NAME}_docs)
+    install (DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/html" DESTINATION ${CMAKE_INSTALL_DOCDIR} COMPONENT ${CMAKE_PROJECT_UC_NAME}_DOCS)
 elseif(NOT DOXYGEN_FOUND)
     message(STATUS:"Doxygen Not Found; Documentation will not be built")
 endif()

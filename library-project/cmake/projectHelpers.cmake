@@ -52,8 +52,8 @@ function(create_library)
     endif()
 
     if("${m_COMPATIBILITY}" STREQUAL "")
-        if(NOT "${PROJECT_COMPATIBILITY}" STREQUAL "")
-            set(m_COMPATIBILITY ${PROJECT_COMPATIBILITY})
+        if(NOT "${CMAKE_PROJECT_COMPATIBILITY}" STREQUAL "")
+            set(m_COMPATIBILITY ${CMAKE_PROJECT_COMPATIBILITY})
         else()
             set(m_COMPATIBILITY "ExactVersion")
         endif()
@@ -176,22 +176,23 @@ function(create_library)
     install(TARGETS ${m_TARGET}
         EXPORT ${CMAKE_PROJECT_NAME}Targets
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-            COMPONENT ${CMAKE_PROJECT_NAME}_libraries
+            COMPONENT ${CMAKE_PROJECT_UC_NAME}_LIBRARIES
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            COMPONENT ${CMAKE_PROJECT_NAME}_libraries
-            NAMELINK_COMPONENT ${CMAKE_PROJECT_NAME}_headers
+            COMPONENT ${CMAKE_PROJECT_UC_NAME}_LIBRARIES
+            NAMELINK_COMPONENT ${CMAKE_PROJECT_UC_NAME}_HEADERS
         FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            COMPONENT ${CMAKE_PROJECT_NAME}_libraries
+            COMPONENT ${CMAKE_PROJECT_UC_NAME}_LIBRARIES
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            COMPONENT ${CMAKE_PROJECT_NAME}_headers
+            COMPONENT ${CMAKE_PROJECT_UC_NAME}_HEADERS
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${m_INSTALL_INCLUDEDIR}
-            COMPONENT ${CMAKE_PROJECT_NAME}_headers
+            COMPONENT ${CMAKE_PROJECT_UC_NAME}_HEADERS
     )
     install (
         FILES ${ALIASHEADERS}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${m_INSTALL_INCLUDEDIR}
-        COMPONENT ${CMAKE_PROJECT_NAME}_headers
-    )
+        COMPONENT ${CMAKE_PROJECT_UC_NAME}_HEADERS
+    )    
+
     #Generate Cmake Files and install
     write_basic_package_version_file(
         ${CMAKE_CURRENT_BINARY_DIR}/${m_TARGET}ConfigVersion.cmake
@@ -224,29 +225,48 @@ function(create_library)
         endif()
         install(FILES $<TARGET_FILE:${m_TARGET}>.dbg
             DESTINATION ${CMAKE_INSTALL_LIBDIR}/debug
-            COMPONENT ${CMAKE_PROJECT_NAME}_debug
+            COMPONENT ${CMAKE_PROJECT_UC_NAME}_DEBUG
         )
     elseif(WIN32)
-        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/$<TARGET_FILE_BASE_NAME:${m_TARGET}>.pdb
+        install(FILES $<TARGET_PDB_FILE:${m_TARGET}>
             DESTINATION ${CMAKE_INSTALL_BINDIR}
-            COMPONENT ${CMAKE_PROJECT_NAME}_debug
+            COMPONENT ${CMAKE_PROJECT_UC_NAME}_DEBUG
         )
     endif()
 
     install(
-    FILES
-           ${CMAKE_CURRENT_BINARY_DIR}/${m_TARGET}Config.cmake
-          ${CMAKE_CURRENT_BINARY_DIR}/${m_TARGET}ConfigVersion.cmake
+        FILES
+            ${CMAKE_CURRENT_BINARY_DIR}/${m_TARGET}Config.cmake
+            ${CMAKE_CURRENT_BINARY_DIR}/${m_TARGET}ConfigVersion.cmake
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${CMAKE_PROJECT_NAME}
-        COMPONENT ${CMAKE_PROJECT_NAME}_headers
+        COMPONENT ${CMAKE_PROJECT_UC_NAME}_HEADERS
     )
 
     install(
         EXPORT ${CMAKE_PROJECT_NAME}Targets
         NAMESPACE ${CMAKE_PROJECT_NAME}::
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${CMAKE_PROJECT_NAME}
-        COMPONENT ${CMAKE_PROJECT_NAME}_headers
+        COMPONENT ${CMAKE_PROJECT_UC_NAME}_HEADERS
     )
+
+    # Depends only work on windows ?
+    if(WIN32)
+    ### install Depends
+        install(TARGETS ${m_TARGET}
+            RUNTIME_DEPENDENCY_SET target-deps
+            COMPONENT ${CMAKE_PROJECT_UC_NAME}_DEPENDS
+        )
+
+        install(RUNTIME_DEPENDENCY_SET target-depends
+            PRE_EXCLUDE_REGEXES
+                "api-ms-win-.*"
+                "ext-ms-.*"
+            POST_EXCLUDE_REGEXES
+                ".*/system32/.*\.dll"
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            COMPONENT ${CMAKE_PROJECT_UC_NAME}_DEPENDS
+        )
+    endif()
 
     export(EXPORT ${CMAKE_PROJECT_NAME}Targets FILE ${CMAKE_CURRENT_BINARY_DIR}/${m_TARGET}Targets.cmake)
     set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_targets ${m_TARGET})
@@ -348,91 +368,6 @@ macro (MAKE_TEST NAME FILE)
     set_tests_properties(${NAME} PROPERTIES DEPENDS ${DEP_LIB})
     set_property(GLOBAL APPEND PROPERTY ${CMAKE_PROJECT_NAME}_tests ${NAME})
 endmacro()
-
-
-####~~~~~~~~~~~~~~~~~~~~~~git_version_from_tag~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#git_version_from_tag(OUTPUT <var-name> [MAJOR <value>] [MINOR <value>] [PATCH <value>] [TWEAK <value> ])
-#This Function will set the variable <var_name> to semantic version value based on the last git tag
-#This Requires a tag in the format of vX.Y.Z in order to construct a proper verson
-## REQUIRED ARGUMENTS
-# OUTPUT <value> - The name of the variable the version will be written into
-## OPTIONAL ARGUMENTS
-# MAJOR <value> - the MAJOR argument sets the fallback major to use if its unable to be detected [Default: 0]
-# MINOR <value> - the MINOR argument sets the fallback minor to use if its unable to be detected [Default: 0]
-# PATCH <value> - the PATCH argument sets the fallback patch to use if its unable to be detected [Default: 0]
-# TWEAK <value> - the TWEAK argument sets the fallback tweak to use if its unable to be detected [Default: 0]
-#Optional MAJOR, MINOR, PATCH should be set when calling they will be used if git can not be found or tag can not be processed.For this reason the MAJOR, MINOR and PATCH should should be synced with semantic tag in git
-#The Tweak is auto generated based on the number of commits since the last tag
-function(git_version_from_tag)
-    set(options)
-    set(oneValueArgs
-        OUTPUT # The Variable to write into
-        MAJOR # Fallback Version Major
-        MINOR # Fallback Version Minor
-        PATCH # Fallback Version Patch
-        TWEAK # Fallback Version Patch
-    )
-    set(multiValueArgs)
-    cmake_parse_arguments(m "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    if(m_UNPARSED_ARGUMENTS)
-        message(FATAL_ERROR "Unknown arguments: ${m_UNPARSED_ARGUMENTS}")
-    endif()
-
-    if("${m_OUTPUT}" STREQUAL "")
-        message(FATAL_ERROR "No OUTPUT set")
-    endif()
-    if(NOT m_MAJOR)
-        set(m_MAJOR 0)
-    endif()
-
-    if(NOT m_MINOR)
-        set(m_MINOR 0)
-    endif()
-
-    if(NOT m_PATCH)
-        set(m_PATCH 0)
-    endif()
-
-    if(NOT m_TWEAK)
-        set(m_TWEAK 0)
-    endif()
-
-    set(VERSION_MAJOR ${m_MAJOR})
-    set(VERSION_MINOR ${m_MINOR})
-    set(VERSION_PATCH ${m_PATCH})
-    set(VERSION_TWEAK ${m_TWEAK})
-
-    if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
-        find_package(Git)
-        if(GIT_FOUND)
-        execute_process(
-            COMMAND ${GIT_EXECUTABLE} describe --long --match v* --always
-            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-            OUTPUT_VARIABLE GITREV
-            ERROR_QUIET
-            OUTPUT_STRIP_TRAILING_WHITESPACE)
-            string(FIND ${GITREV} "v" isRev)
-            if(NOT isRev EQUAL -1)
-                string(REGEX MATCH [0-9]+ MAJOR ${GITREV})
-                string(REGEX MATCH \\.[0-9]+ MINOR ${GITREV})
-                string(REPLACE "." "" MINOR "${MINOR}")
-                string(REGEX MATCH [0-9]+\- PATCH ${GITREV})
-                string(REPLACE "-" "" PATCH "${PATCH}")
-                string(REGEX MATCH \-[0-9]+\- TWEAK ${GITREV})
-                string(REPLACE "-" "" TWEAK "${TWEAK}")
-                set(VERSION_MAJOR ${MAJOR})
-                set(VERSION_MINOR ${MINOR})
-                set(VERSION_PATCH ${PATCH})
-                set(VERSION_TWEAK ${TWEAK})
-            elseif(NOT ${GITREV} STREQUAL "")
-                message(STATUS "Unable to process tag")
-            endif()
-        endif()
-    endif()
-    set(${m_OUTPUT} "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}.${VERSION_TWEAK}" PARENT_SCOPE)
-endfunction()
-
 
 # Common Platform Enumeration: https://nvd.nist.gov/products/cpe
 # TODO: This detection can be improved.
