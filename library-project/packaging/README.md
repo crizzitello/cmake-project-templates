@@ -12,3 +12,6 @@ Based on the backend package tools found one or more package will be built for t
 
 ## Before you use
  Rename the PROJECT_NAME_installer files to your projects real name; Later replace them with better icons
+
+
+ - The Variable PACKAGE_VERSION_LABEL can be set at configuration time to have the generated package use a version like "continuous" while keeping the internal version intact

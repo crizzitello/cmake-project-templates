@@ -17,5 +17,5 @@ install(
         ${CMAKE_PROJECT_NAME}Targets.cmake
     NAMESPACE
         ${CMAKE_PROJECT_NAME}::
-    COMPONENT ${CMAKE_PROJECT_NAME}_headers
+    COMPONENT ${CMAKE_PROJECT_UC_NAME}_HEADERS
 )

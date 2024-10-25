@@ -1,91 +1,65 @@
 ### PROJECT TEMPLATE
 # Works well for libraries with demo applications
-## SET A REQUIRED CMAKE VERSION 3.21+ is required to use the features in this template
+
+# Cmake 3.21+ is required to build this project
 cmake_minimum_required(VERSION 3.21)
 
 # Allow Cmake to use the cmake or env var <package>_ROOT for find_package calls for <package>
 # https://cmake.org/cmake/help/latest/policy/CMP0074.html
 cmake_policy(SET CMP0074 NEW)
 
+# First include init-project and use the setup_project function
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/init-project.cmake)
+
+# Read the project info from our project file
+# Sets the following to be used in your project call and then unset
+# The project call will transform them into the names on the right
+# PROJECTS_NAME     -> CMAKE_PROJECT_NAME
+# PROJECTS_DESC     -> CMAKE_PROJECT_DESCRIPTION
+# PROJECTS_VERSION  -> CMAKE_PROJECT_VERSION
+# PROJECTS_HOMEPAGE -> CMAKE_PROJECT_HOMEPAGE
+# Below are not standard Cmake project vars we have set
+# You will not find these outside of using the template
+# CMAKE_PROJECT_CONTACT <- Project contact used for packaging
+# CMAKE_PROJECT_COMPATIBILITY <- Used by consuming projects to check if the verison found is compatible with the version requested
+# CMAKE_PROJECT_LICENSE <- SPDX Name for your license
+# CMAKE_PROJECT_SUPPLIER <- The supplier of the generated package. A person, group or company
+# CMAKE_PROJECT_LC_NAME <- Lower Case name
+# CMAKE_PROJECT_UC_NAME <- Upper case name should be use for package components
+# CMAKE_PROJECT_LICENSE_FILE <- The detected license file
+read_project_info(${CMAKE_CURRENT_LIST_DIR}/projectInfo.txt)
+
+#FILL VARS
+# SYSTEM_NAME
+# SYSTEM_LIKE
+# SYSTEM_CODENAME
+# SYSTEM_VERSION_ID
+# SYSTEM_CVE_STRING <- Not Used Yet
+set_extra_os_info()
 
 #Used Modules that can be included before a project call has been made
 include(CMakePackageConfigHelpers)
 include(GenerateExportHeader)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/projectHelpers.cmake)
 
-###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PROJECT VARS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# These values are used only before project is called
-
-# After Calling 'project' This becomes the CMAKE_PROJECT_NAME
-# The Project name will used in several places thru-out the project
-# The project name should not contain spaces or characters that can not be used in file or directory names
-# Used in creating a deployment paths on linux
-# Used to name the Info class
-# Used to generate names the i18n files and more
-set(PROJECTS_NAME "")
-if("${PROJECTS_NAME}" STREQUAL "")
-    message(FATAL_ERROR "You must set a project name")
-endif()
-
-#Keep a copy of the project name in lower and upper for later use
-string(TOLOWER ${PROJECTS_NAME} PROJECT_LC_NAME)
-string(TOUPPER ${PROJECTS_NAME} PROJECT_UC_NAME)
-
-# After Calling 'project' This becomes the CMAKE_PROJECT_DESCRIPTION
-# The description should contain a single line of text with a simple description of the project
-set(PROJECTS_DESCRIPTION "A SINGLE LINE TO DESCRIBE THE PROJECT")
-
-# This used for the 'project' call and tell cmake what languages you plan to use.
-set(PROJECTS_LANGUAGES "CXX;C")
-
-# After Calling 'project' This becomes the CMAKE_PROJECT_HOMEPAGE_URL
-#The URL of the project
-set(PROJECTS_HOMEPAGE_URL "")
-if("${PROJECTS_HOMEPAGE_URL}" STREQUAL "")
-    message(FATAL_ERROR "You must set a project URL")
-endif()
-#Below is a macro from projectHelpers.cmake
-#It will read Version info from Git Tag vM.m.p
-#Should match the last semantic tag in git
-# After calling 'project' this will become the CMAKE_PROJECT_VERSION
-git_version_from_tag(
-    OUTPUT PROJECTS_VERSION
-    MAJOR 0
-    MINOR 0
-    PATCH 0
-    TWEAK 0
-)
-
-###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SBOM VARS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Additional Data needed for sbom creataion
-
-#Set to a valid SPDX License from this list https://spdx.org/licenses/
-# Common Ones are MIT, LGPL-3.0-or-later
-# For other non spdx use License-Ref-LICENSE
-# Copy the main LICENSE into the COPYING.txt In the root of the source dir
-# Blank will be filled with "NOASSERTION" OR "NONE"
-set(PROJECTS_LICENSE "")
-
-#The Supplier of this packager A company or person
-set(PROJECTS_SUPPLIER "")
-if("${PROJECTS_SUPPLIER}" STREQUAL "")
-    message(FATAL_ERROR "You must set a project supplier")
-endif()
-
-# Projet Compatibility Default value to be used for compability of our versions
-# Can be AnyNewerVersion SameMajorVersion SameMinorVersion ExactVersion
-set(PROJECT_COMPATIBILITY "ExactVersion")
-###~~~~~~~~~~~~~~~~~~~~~~~~~PROJECT CALL~~~~~~~~~~~~~~~~~~~~~~~~~
-
-# Do We want to default to Shared LIBS ?
-option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
-
+###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Call Project ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# All These are set by the read_project_info call above
 project(${PROJECTS_NAME}
     VERSION ${PROJECTS_VERSION}
     DESCRIPTION ${PROJECTS_DESCRIPTION}
-    LANGUAGES ${PROJECTS_LANGUAGES}
-    HOMEPAGE_URL ${PROJECTS_HOMEPAGE_URL}
+    HOMEPAGE_URL ${PROJECTS_HOMEPAGE}
+    LANGUAGES C CXX
 )
+
+###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PROJECT VARS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# These values are used only before project is called
+unset(PROJECTS_NAME)
+unset(PROJECTS_VERSION)
+unset(PROJECTS_DESCRIPTION)
+unset(PROJECTS_HOMEPAGE)
+
+# Do We want to default to Shared LIBS ?
+option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
 #Used Modules that must be included after a project call has been made
 include(GNUInstallDirs)
@@ -155,11 +129,12 @@ endif()
 # Setup the SBOM to be generated during install.
 sbom_generate(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/sbom-${PROJECT_NAME}-${PROJECT_VERSION}.spdx
-        LICENSE ${PROJECTS_LICENSE}
-        SUPPLIER ${PROJECTS_SUPPLIER}
+        LICENSE ${CMAKE_PROJECT_LICENSE}
+        SUPPLIER ${CMAKE_PROJECT_SUPPLIER}
         SUPPLIER_URL ${CMAKE_PROJECT_HOMEPAGE_URL}
 )
 
+### PLACE ANY PROJECT LEVEL FIND PACKAGES HERE
 #Set Our Required Qt Version
 # Use for all find_package and init calls later
 set(REQUIRED_QT_VERSION 6.2.0)
@@ -184,7 +159,6 @@ endif()
 # Our Project will require Qt and the version in use is the version of QtCore we just found
 sbom_add(PACKAGE Qt VERSION ${Qt6Core_VERSION})
 
-### PLACE ANY PROJECT LEVEL FIND PACKAGES HERE
 
 #~~~~~~~~~~~~~~~~~~~~~~Set the Rpath for our libs.
 # Prevents the need for LD_LIBRARY path in most cases
@@ -223,8 +197,8 @@ if(PACKAGE)
     add_subdirectory(packaging)
 endif()
 
-#Install the COPYING.TXT Files as our license
-install (FILES "${CMAKE_CURRENT_SOURCE_DIR}/COPYING.TXT" DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/${CMAKE_PROJECT_NAME} RENAME LICENSE COMPONENT ${CMAKE_PROJECT_NAME}_libraries)
+#Install our License File
+install (FILES "${CMAKE_PROJECT_LICENSE_FILE}" DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/${CMAKE_PROJECT_NAME} RENAME LICENSE COMPONENT ${CMAKE_PROJECT_UC_NAME}_LIBRARIES)
 
 # uninstall target
 if(NOT TARGET uninstall)
@@ -251,9 +225,9 @@ endif()
 sbom_finalize(${NO_VERIFY} ${GRPAH})
 
 #Install our sbom file
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sbom-${CMAKE_PROJECT_NAME}-${CMAKE_PROJECT_VERSION}.spdx DESTINATION share/${CMAKE_PROJECT_NAME} COMPONENT ${CMAKE_PROJECT_NAME}_libraries)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sbom-${CMAKE_PROJECT_NAME}-${CMAKE_PROJECT_VERSION}.spdx DESTINATION share/${CMAKE_PROJECT_NAME} COMPONENT ${CMAKE_PROJECT_UC_NAME}_LIBRARIES)
 
 #if we made a graph install the graph
 if(SBOM_GRAPH)
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sbom-${CMAKE_PROJECT_NAME}-${CMAKE_PROJECT_VERSION}-spdx.png DESTINATION share/${CMAKE_PROJECT_NAME} COMPONENT ${CMAKE_PROJECT_NAME}_libraries)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/sbom-${CMAKE_PROJECT_NAME}-${CMAKE_PROJECT_VERSION}-spdx.png DESTINATION share/${CMAKE_PROJECT_NAME} COMPONENT ${CMAKE_PROJECT_UC_NAME}_LIBRARIES)
 endif()

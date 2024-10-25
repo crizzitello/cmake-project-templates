@@ -1,0 +1,43 @@
+# All Tags are REQUIRED
+# Use the format TAG: Value
+# Order does not matter
+
+# The Project name will used in several places thru-out the project
+# The project name should not contain spaces or - or other characters that can not be used in file or directory names
+
+# Used in creating a deployment paths on linux
+# Used to name the Info class
+# Used to generate names the i18n files and more
+# In A PROJECT_UC_NAME and PROJECT_LC_NAME are also created with the name in upper and lowercase
+PROJECT: template_demo_lib
+
+# This is the fallback version
+# This version should always match your last vM.m.p Tag
+VERSION: 0.1.0
+
+# This is the one line description of your project
+DESC: This is the description of my cool project
+
+# The URL of the project's homepage
+HOMEPAGE: https://www.github.com/crizzitello-cmake-project-templates
+
+
+# The Supplier Creator of this project
+# Will be used to in package and sbom creation
+SUPPLIER: C.RIZZITELLO
+
+# Project Contact this will be used for the contact person for packages
+# use the form of Name <user@email.com>
+CONTACT: Chris Rizzitello <crizzitello@ics.com>
+
+#Set to a valid SPDX License from this list https://spdx.org/licenses/
+# For other non spdx use License-Ref-LICENSE
+# Copy the main License test into either COPYING.TXT (if GPL) or LICENSE.txt in the root of the source dir
+# The Contents of LICENSE will be used anywhere your license is included in the package / deployment
+LICENSE: MIT
+
+
+
+# Compatibility Default value to be used for compability of our versions
+# Can be AnyNewerVersion SameMajorVersion SameMinorVersion  or ExactVersion
+COMPATIBILITY: AnyNewerVersion
