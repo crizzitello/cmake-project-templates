@@ -2,7 +2,7 @@
 set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM 1)
 
 option(CLEAN_TRS "Clean Obsolete translations from tr files" FALSE)
-find_package(Qt6LinguistTools)
+find_package(Qt6 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS LinguistTools)
 
 set(PACKAGE_TRS
     #THE TS FILES IN THIS DIRECTORY TO INCLUDE
