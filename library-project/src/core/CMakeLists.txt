@@ -15,6 +15,7 @@ file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}Config.cmake.in
     "
 )
 
+string(LENGTH "${CMAKE_PROJECT_NAME}_" I18N_BASENAME_LENGTH)
 configure_file(Info.h.in ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}Info.h @ONLY)
 
 create_library(

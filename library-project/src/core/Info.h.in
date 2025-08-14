@@ -84,7 +84,7 @@ public:
         for (const QString &translation : std::as_const(langList)) {
             QTranslator *translator = new QTranslator;
             std::ignore = translator->load(translation, dir.absolutePath());
-            QString lang = translation.mid(6, 2);
+            QString lang = translation.mid(@I18N_BASENAME_LENGTH@, translation.lastIndexOf('.'). - @I18N_BASENAME_LENGTH@);
             @CMAKE_PROJECT_NAME@_translations.insert(lang, translator);
         }
         return @CMAKE_PROJECT_NAME@_translations;
